@@ -41,8 +41,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='generate images'
     )
+    parser.add_argument('outdir', type=str)
     parser.add_argument('--ckpt', type=str)
-    parser.add_argument('--artifacts', type=str, default=".", help='path to artifacts.')
     parser.add_argument('--cuda', type=int, default=0, help='index of gpu to use')
     parser.add_argument('--start_iter', type=int, default=6)
     parser.add_argument('--end_iter', type=int, default=10)
@@ -62,30 +62,28 @@ if __name__ == "__main__":
     net_ig = Generator( ngf=64, nz=noise_dim, nc=3, im_size=args.im_size)#, big=args.big )
     net_ig.to(device)
 
-    for epoch in [10000*i for i in range(args.start_iter, args.end_iter+1)]:
-        ckpt = f"{args.artifacts}/models/{epoch}.pth"
-        checkpoint = torch.load(ckpt, map_location=lambda a,b: a)
-        # Remove prefix `module`.
-        checkpoint['g'] = {k.replace('module.', ''): v for k, v in checkpoint['g'].items()}
-        net_ig.load_state_dict(checkpoint['g'])
-        #load_params(net_ig, checkpoint['g_ema'])
+    ckpt = args.ckpt
+    checkpoint = torch.load(ckpt, map_location=lambda a,b: a)
+    # Remove prefix `module`.
+    checkpoint['g'] = {k.replace('module.', ''): v for k, v in checkpoint['g'].items()}
+    net_ig.load_state_dict(checkpoint['g'])
+    #load_params(net_ig, checkpoint['g_ema'])
 
-        #net_ig.eval()
-        print('load checkpoint success, epoch %d'%epoch)
+    #net_ig.eval()
+    print('load checkpoint success %s'%ckpt)
 
-        net_ig.to(device)
+    net_ig.to(device)
 
-        del checkpoint
+    del checkpoint
 
-        dist = 'eval_%d'%(epoch)
-        dist = os.path.join(dist, 'img')
-        os.makedirs(dist, exist_ok=True)
+    dist = args.outdir
+    os.makedirs(dist, exist_ok=True)
 
-        with torch.no_grad():
-            for i in tqdm(range(args.n_sample//args.batch)):
-                noise = torch.randn(args.batch, noise_dim).to(device)
-                g_imgs = net_ig(noise)[0]
-                g_imgs = F.interpolate(g_imgs, 512)
-                for j, g_img in enumerate( g_imgs ):
-                    vutils.save_image(g_img.add(1).mul(0.5), 
-                        os.path.join(dist, '%d.png'%(i*args.batch+j)))#, normalize=True, range=(-1,1))
+    with torch.no_grad():
+        for i in tqdm(range(args.n_sample//args.batch)):
+            noise = torch.randn(args.batch, noise_dim).to(device)
+            g_imgs = net_ig(noise)[0]
+            g_imgs = F.interpolate(g_imgs, 512)
+            for j, g_img in enumerate( g_imgs ):
+                vutils.save_image(g_img.add(1).mul(0.5), 
+                    os.path.join(dist, '%d.png'%(i*args.batch+j)))#, normalize=True, range=(-1,1))
