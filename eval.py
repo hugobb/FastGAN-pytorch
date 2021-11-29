@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     start_noise = torch.randn(args.n_sample, noise_dim).to(device)
     end_noise = torch.randn(args.n_sample, noise_dim).to(device)
-    alpha = torch.linspace(0, 1, args.n_sample).to(device)
+    alpha = torch.linspace(0, 1, args.n_sample).to(device).view(args.n_sample, 1)
     noise = alpha*start_noise + (1-alpha)*end_noise
 
     with torch.no_grad():
