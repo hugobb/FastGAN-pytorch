@@ -59,7 +59,7 @@ if __name__ == "__main__":
     noise_dim = 256
     device = torch.device('cuda:%d'%(args.cuda))
     
-    net_ig = Generator( ngf=64, nz=noise_dim, nc=3, im_size=args.im_size)#, big=args.big )
+    net_ig = Generator(ngf=64, nz=noise_dim, nc=3, im_size=args.im_size)#, big=args.big )
     net_ig.to(device)
 
     ckpt = args.ckpt
@@ -79,10 +79,15 @@ if __name__ == "__main__":
     dist = args.outdir
     os.makedirs(dist, exist_ok=True)
 
+    start_noise = torch.randn(args.n_sample, noise_dim).to(device)
+    end_noise = torch.randn(args.n_sample, noise_dim).to(device)
+    alpha = torch.linspace(0, 1, args.n_sample).to(device)
+    noise = alpha*start_noise + (1-alpha)*end_noise
+
     with torch.no_grad():
         for i in tqdm(range(args.n_sample//args.batch)):
-            noise = torch.randn(args.batch, noise_dim).to(device)
-            g_imgs = net_ig(noise)[0]
+            _noise = noise[i*args.batch: (i+1)*args.batch]
+            g_imgs = net_ig(_noise)[0]
             g_imgs = F.interpolate(g_imgs, 512)
             for j, g_img in enumerate( g_imgs ):
                 vutils.save_image(g_img.add(1).mul(0.5), 
