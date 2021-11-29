@@ -53,6 +53,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_sample', type=int, default=2000)
     parser.add_argument('--big', action='store_true')
     parser.add_argument('--im_size', type=int, default=1024)
+    parser.add_argument('--out_size', type=int, default=512)
     parser.set_defaults(big=False)
     args = parser.parse_args()
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
         for i in tqdm(range(args.n_sample//args.batch)):
             _noise = noise[i*args.batch: (i+1)*args.batch]
             g_imgs = net_ig(_noise)[0]
-            g_imgs = F.interpolate(g_imgs, 512)
+            g_imgs = F.interpolate(g_imgs, args.out_size)
             for j, g_img in enumerate( g_imgs ):
                 vutils.save_image(g_img.add(1).mul(0.5), 
                     os.path.join(dist, '%d.png'%(i*args.batch+j)))#, normalize=True, range=(-1,1))
