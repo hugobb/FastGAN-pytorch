@@ -92,4 +92,4 @@ if __name__ == "__main__":
             g_imgs = F.interpolate(g_imgs, args.out_size)
             for j, g_img in enumerate( g_imgs ):
                 vutils.save_image(g_img.add(1).mul(0.5), 
-                    os.path.join(dist, '%.4d.png'%(i*args.batch+j)))#, normalize=True, range=(-1,1))
+                    os.path.join(dist, f'{i*args.batch+j:04d}.png'))#, normalize=True, range=(-1,1))
