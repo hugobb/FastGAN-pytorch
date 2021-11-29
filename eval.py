@@ -80,8 +80,8 @@ if __name__ == "__main__":
     dist = args.outdir
     os.makedirs(dist, exist_ok=True)
 
-    start_noise = torch.randn(args.n_sample, noise_dim).to(device)
-    end_noise = torch.randn(args.n_sample, noise_dim).to(device)
+    start_noise = torch.randn(1, noise_dim).to(device)
+    end_noise = torch.randn(1, noise_dim).to(device)
     alpha = torch.linspace(0, 1, args.n_sample).to(device).view(args.n_sample, 1)
     noise = alpha*start_noise + (1-alpha)*end_noise
 
@@ -92,4 +92,4 @@ if __name__ == "__main__":
             g_imgs = F.interpolate(g_imgs, args.out_size)
             for j, g_img in enumerate( g_imgs ):
                 vutils.save_image(g_img.add(1).mul(0.5), 
-                    os.path.join(dist, '%d.png'%(i*args.batch+j)))#, normalize=True, range=(-1,1))
+                    os.path.join(dist, '%4d.png'%(i*args.batch+j)))#, normalize=True, range=(-1,1))
