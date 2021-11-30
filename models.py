@@ -69,6 +69,12 @@ class NoiseInjection(nn.Module):
     def set_mode(self, mode):
         self.mode = mode
 
+    def set_noise(self, noise):
+        self.noise = noise
+
+    def get_noise(self, noise):
+        return self.noise
+
     def forward(self, feat):
         batch, _, height, width = feat.shape
         if self.mode == NoiseMode.RANDOM:
@@ -173,6 +179,18 @@ class Generator(nn.Module):
         for layer in self.modules():
             if isinstance(layer, NoiseInjection):
                 layer.set_mode(mode)
+
+    def get_noise(self):
+        noise_dict = {}
+        for name, layer in self.named_modules():
+            if isinstance(layer, NoiseInjection):
+                noise_dict[name] = layer.get_noise()
+        return noise_dict
+
+    def set_noise(self, noise_dict):
+        for name, noise in noise_dict:
+            layer = self.get_submodule(name)
+            layer.set_noise(noise)
 
     def forward(self, input):
         
