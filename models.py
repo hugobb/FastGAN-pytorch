@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
 import torch.nn.functional as F
+from enum import Enum
 
 import random
 
@@ -30,6 +31,11 @@ def batchNorm2d(*args, **kwargs):
 def linear(*args, **kwargs):
     return spectral_norm(nn.Linear(*args, **kwargs))
 
+class NoiseMode(Enum):
+    CONSTANT = "constant"
+    NONE = "none"
+    RANDOM = "random"
+
 class PixelNorm(nn.Module):
     def forward(self, input):
         return input * torch.rsqrt(torch.mean(input ** 2, dim=1, keepdim=True) + 1e-8)
@@ -53,15 +59,26 @@ class GLU(nn.Module):
 
 
 class NoiseInjection(nn.Module):
-    def __init__(self):
+    def __init__(self, mode=NoiseMode.RANDOM):
         super().__init__()
 
         self.weight = nn.Parameter(torch.zeros(1), requires_grad=True)
+        self.mode = mode
+        self.noise = None
 
-    def forward(self, feat, noise=None):
-        if noise is None:
-            batch, _, height, width = feat.shape
+    def set_mode(self, mode):
+        self.mode = mode
+
+    def forward(self, feat):
+        batch, _, height, width = feat.shape
+        if self.mode == NoiseMode.RANDOM:
             noise = torch.randn(batch, 1, height, width).to(feat.device)
+        elif self.mode == NoiseMode.NONE:
+            noise = 0.
+        elif self.mode == NoiseMode.CONSTANT:
+            if self.noise is None:
+                self.noise = torch.randn(1, 1, height, width).to(feat.device)
+            noise = self.noise
 
         return feat + self.weight * noise
 
@@ -151,7 +168,12 @@ class Generator(nn.Module):
             self.se_512 = SEBlock(nfc[32], nfc[512])
         if im_size > 512:
             self.feat_1024 = UpBlock(nfc[512], nfc[1024])  
-        
+
+    def set_noise_mode(self, mode):
+        for layer in self.modules():
+            if isinstance(layer, NoiseInjection):
+                layer.set_mode(mode)
+
     def forward(self, input):
         
         feat_4   = self.init(input)

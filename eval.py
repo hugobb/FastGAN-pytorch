@@ -11,7 +11,7 @@ import random
 import argparse
 from tqdm import tqdm
 
-from models import Generator
+from models import Generator, NoiseMode
 
 
 def load_params(model, new_param):
@@ -74,6 +74,7 @@ if __name__ == "__main__":
     print('load checkpoint success %s'%ckpt)
 
     net_ig.to(device)
+    net_ig.set_noise_mode(NoiseMode.CONSTANT)
 
     del checkpoint
 

@@ -175,7 +175,7 @@ def train(args):
         if iteration % (save_interval*50) == 0 or iteration == total_iterations:
             backup_para = copy_G_params(netG)
             load_params(netG, avg_param_G)
-            torch.save({'g':netG.state_dict(),'d':netD.state_dict()}, saved_model_folder+'/%d.pth'%iteration)
+            torch.save({'g':netG.state_dict(),'d':netD.state_dict(), 'args': args}, saved_model_folder+'/%d.pth'%iteration)
             load_params(netG, backup_para)
             torch.save({'g':netG.state_dict(),
                         'd':netD.state_dict(),
