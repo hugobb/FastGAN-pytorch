@@ -9,13 +9,13 @@ from torchvision import utils as vutils
 import argparse
 from tqdm import tqdm
 
-from models import weights_init, Discriminator, Generator
-from operation import copy_G_params, load_params, get_dir
-from operation import ImageFolder, InfiniteSamplerWrapper
-from diffaug import DiffAugment
+from fastgan.models import weights_init, Discriminator, FastGAN
+from fastgan.operation import copy_G_params, load_params, get_dir
+from fastgan.operation import ImageFolder, InfiniteSamplerWrapper
+from fastgan.diffaug import DiffAugment
 policy = 'color,translation'
-import lpips
-percept = lpips.PerceptualLoss(model='net-lin', net='vgg', use_gpu=True)
+from fastgan import lpips
+percept = lpips.PerceptualLoss(model='net-lin', net='vgg', use_gpu=False)
 
 
 #torch.backends.cudnn.benchmark = True
@@ -61,11 +61,11 @@ def train(args):
     nz = 256
     nlr = 0.0002
     nbeta1 = 0.5
-    use_cuda = True
+    use_cuda = False
     multi_gpu = False
     dataloader_workers = 8
     current_iteration = 0
-    save_interval = 100
+    save_interval = args.save_interval
     saved_model_folder, saved_image_folder = get_dir(args)
     
     device = torch.device("cpu")
@@ -81,7 +81,7 @@ def train(args):
     trans = transforms.Compose(transform_list)
     
     if 'lmdb' in data_root:
-        from operation import MultiResolutionDataset
+        from fastgan.operation import MultiResolutionDataset
         dataset = MultiResolutionDataset(data_root, trans, 1024)
     else:
         dataset = ImageFolder(root=data_root, transform=trans)
@@ -97,7 +97,7 @@ def train(args):
     
     
     #from model_s import Generator, Discriminator
-    netG = Generator(ngf=ngf, nz=nz, im_size=im_size)
+    netG = FastGAN(ngf=ngf, nz=nz, im_size=im_size)
     netG.apply(weights_init)
 
     netD = Discriminator(ndf=ndf, im_size=im_size)
@@ -129,7 +129,7 @@ def train(args):
 
     for iteration in tqdm(range(current_iteration, total_iterations+1)):
         real_image = next(dataloader)
-        real_image = real_image.cuda(non_blocking=True)
+        real_image = real_image.to(device)
         current_batch_size = real_image.size(0)
         noise = torch.Tensor(current_batch_size, nz).normal_(0, 1).to(device)
 
@@ -173,7 +173,7 @@ def train(args):
         if iteration % (save_interval*50) == 0 or iteration == total_iterations:
             backup_para = copy_G_params(netG)
             load_params(netG, avg_param_G)
-            torch.save({'g':netG.state_dict(),'d':netD.state_dict()}, saved_model_folder+'/%d.pth'%iteration)
+            netG.save(saved_model_folder+'/%d.pth'%iteration)
             load_params(netG, backup_para)
             torch.save({'g':netG.state_dict(),
                         'd':netD.state_dict(),
@@ -185,13 +185,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='region gan')
 
     parser.add_argument('--path', type=str, default='../lmdbs/art_landscape_1k', help='path of resource dataset, should be a folder that has one or many sub image folders inside')
-    parser.add_argument('--cuda', type=int, default=0, help='index of gpu to use')
     parser.add_argument('--name', type=str, default='test1', help='experiment name')
     parser.add_argument('--iter', type=int, default=50000, help='number of iterations')
     parser.add_argument('--start_iter', type=int, default=0, help='the iteration to start training')
     parser.add_argument('--batch_size', type=int, default=8, help='mini batch number of images')
     parser.add_argument('--im_size', type=int, default=1024, help='image resolution')
     parser.add_argument('--ckpt', type=str, default='None', help='checkpoint weight path if have one')
+    parser.add_argument('--save_interval', type=int, default=100, help='interval for saving model and image')
 
 
     args = parser.parse_args()

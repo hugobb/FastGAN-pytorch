@@ -1,25 +1,20 @@
 from eval import load_params
 import torch
-from torch import nn
-from torch import optim
 import torch.nn.functional as F
 from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
 from torchvision import utils as vutils
 from torchvision import transforms
 import os
-import random
-import argparse
 from tqdm import tqdm
 
-from models import Generator
-from operation import load_params, InfiniteSamplerWrapper
+from fastgan import FastGAN
+from fastgan.operation import load_params, InfiniteSamplerWrapper
 
 noise_dim = 256
 device = torch.device('cuda:%d'%(0))
 
 im_size = 512  
-net_ig = Generator( ngf=64, nz=noise_dim, nc=3, im_size=im_size)#, big=args.big )
+net_ig = FastGAN( ngf=64, nz=noise_dim, nc=3, im_size=im_size)#, big=args.big )
 net_ig.to(device)
 
 epoch = 50000

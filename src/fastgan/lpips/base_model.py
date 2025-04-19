@@ -1,12 +1,12 @@
 import os
 import torch
-from torch.autograd import Variable
-from pdb import set_trace as st
-from IPython import embed
+import numpy as np
 
 class BaseModel():
     def __init__(self):
-        pass;
+        self.input = None
+        self.image_paths = None
+        self.save_dir = None
         
     def name(self):
         return 'BaseModel'
@@ -16,9 +16,6 @@ class BaseModel():
         self.gpu_ids = gpu_ids
 
     def forward(self):
-        pass
-
-    def get_image_paths(self):
         pass
 
     def optimize_parameters(self):
@@ -42,17 +39,21 @@ class BaseModel():
     # helper loading function that can be used by subclasses
     def load_network(self, network, network_label, epoch_label):
         save_filename = '%s_net_%s.pth' % (epoch_label, network_label)
+        if self.save_dir is None:
+            raise ValueError("self.save_dir is None, please set it before loading a network.")
         save_path = os.path.join(self.save_dir, save_filename)
         print('Loading network from %s'%save_path)
         network.load_state_dict(torch.load(save_path))
 
-    def update_learning_rate():
+    def update_learning_rate(self):
         pass
 
     def get_image_paths(self):
         return self.image_paths
 
     def save_done(self, flag=False):
+        if self.save_dir is None:
+            raise ValueError("self.save_dir is None, please set it before saving done flag.")
         np.save(os.path.join(self.save_dir, 'done_flag'),flag)
         np.savetxt(os.path.join(self.save_dir, 'done_flag'),[flag,],fmt='%i')
 

@@ -1,6 +1,5 @@
 import os
 import numpy as np
-import torch
 import torch.utils.data as data
 from torch.utils.data import Dataset
 from PIL import Image
@@ -63,12 +62,13 @@ def get_dir(args):
 
 class  ImageFolder(Dataset):
     """docstring for ArtDataset"""
-    def __init__(self, root, transform=None):
+    def __init__(self, root, transform=None, return_idx=False):
         super( ImageFolder, self).__init__()
         self.root = root
 
         self.frame = self._parse_frame()
         self.transform = transform
+        self.return_idx = return_idx
 
     def _parse_frame(self):
         frame = []
@@ -89,6 +89,9 @@ class  ImageFolder(Dataset):
             
         if self.transform:
             img = self.transform(img) 
+
+        if self.return_idx:
+            return img, idx
 
         return img
 

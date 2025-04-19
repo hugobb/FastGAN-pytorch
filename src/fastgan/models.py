@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
 import torch.nn.functional as F
+from pathlib import Path
 
 import random
 
@@ -119,16 +120,19 @@ def UpBlockComp(in_planes, out_planes):
     return block
 
 
-class Generator(nn.Module):
+class FastGAN(nn.Module):
     def __init__(self, ngf=64, nz=100, nc=3, im_size=1024):
-        super(Generator, self).__init__()
+        super(FastGAN, self).__init__()
+
+        self.ngf = ngf
+        self.nz = nz
+        self.nc = nc
+        self.im_size = im_size
 
         nfc_multi = {4:16, 8:8, 16:4, 32:2, 64:2, 128:1, 256:0.5, 512:0.25, 1024:0.125}
         nfc = {}
         for k, v in nfc_multi.items():
             nfc[k] = int(v*ngf)
-
-        self.im_size = im_size
 
         self.init = InitLayer(nz, channel=nfc[4])
                                 
@@ -152,8 +156,7 @@ class Generator(nn.Module):
         if im_size > 512:
             self.feat_1024 = UpBlock(nfc[512], nfc[1024])  
         
-    def forward(self, input):
-        
+    def forward(self, input):   
         feat_4   = self.init(input)
         feat_8   = self.feat_8(feat_4)
         feat_16  = self.feat_16(feat_8)
@@ -178,6 +181,41 @@ class Generator(nn.Module):
         im_1024 = torch.tanh(self.to_big(feat_1024))
 
         return [im_1024, im_128]
+
+    def save(self, path: Path | str):
+        """Save the FastGAN model to a given path."""
+        # Convert path to Path object if it's a string
+        if isinstance(path, str):
+            path = Path(path)
+
+        # Check if the directory exists, if not create it
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+
+
+        # Save the model
+        torch.save({
+            'model_state_dict': self.state_dict(),
+            'im_size': self.im_size,
+            'ngf': self.ngf,
+            'nz': self.nz,
+            'nc': self.nc,
+            }, path)
+
+    @staticmethod
+    def load(path: Path):
+        """Load the FastGAN model from a given path."""
+        # Check if the path exists
+        if not path.exists():
+            raise FileNotFoundError(f"The path {path} does not exist.")
+
+        # Load the model
+        model_ckpt = torch.load(path, map_location='cpu')
+        model = FastGAN(model_ckpt['ngf'], model_ckpt['nz'], model_ckpt['nc'], model_ckpt['im_size'])
+        model.load_state_dict(model_ckpt['model_state_dict'])
+        model.eval()
+
+        return model
 
 
 class DownBlock(nn.Module):

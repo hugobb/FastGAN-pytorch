@@ -9,12 +9,12 @@ from torchvision import utils as vutils
 import argparse
 from tqdm import tqdm
 
-from models import weights_init, Discriminator, Generator, SimpleDecoder
-from operation import copy_G_params, load_params, get_dir
-from operation import ImageFolder, InfiniteSamplerWrapper
-from diffaug import DiffAugment
+from fastgan import FastGAN
+from fastgan.operation import copy_G_params, load_params, get_dir
+from fastgan.operation import ImageFolder, InfiniteSamplerWrapper
+from fastgan.diffaug import DiffAugment
 policy = 'color,translation'
-import lpips
+from fastgan import lpips
 percept = lpips.PerceptualLoss(model='net-lin', net='vgg', use_gpu=True)
 
 
@@ -94,7 +94,7 @@ def train(args):
 
     total_iterations = int(len(dataset)*100/batch_size)
     
-    netG = Generator(ngf=ngf, nz=nz, im_size=im_size)
+    netG = FastGAN(ngf=ngf, nz=nz, im_size=im_size)
 
     
     ckpt = torch.load(checkpoint)

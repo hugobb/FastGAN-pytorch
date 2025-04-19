@@ -9,10 +9,10 @@ from torchvision import utils as vutils
 import argparse
 from tqdm import tqdm
 
-from models import weights_init, Discriminator, Generator
-from operation import copy_G_params, load_params, get_dir
-from operation import ImageFolder, InfiniteSamplerWrapper
-from diffaug import DiffAugment
+from fastgan.models import weights_init, Discriminator, FastGAN
+from fastgan.operation import copy_G_params, load_params, get_dir
+from fastgan.operation import ImageFolder, InfiniteSamplerWrapper
+from fastgan.diffaug import DiffAugment
 
 
 
@@ -30,7 +30,7 @@ device = 'cuda:0'
 im_size = 256
 
 
-netG = Generator(ngf=ngf, nz=nz, im_size=im_size)
+netG = FastGAN(ngf=ngf, nz=nz, im_size=im_size)
 netG.apply(weights_init)
 
 netD = Discriminator(ndf=ndf, im_size=im_size)
