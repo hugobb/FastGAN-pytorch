@@ -135,10 +135,14 @@ class BCERankingLoss(nn.Module):
 
 # L2, DSSIM metrics
 class FakeNet(nn.Module):
-    def __init__(self, use_gpu=True, colorspace='Lab'):
+    def __init__(self, colorspace='Lab'):
         super(FakeNet, self).__init__()
-        self.use_gpu = use_gpu
+        self.device = None
         self.colorspace=colorspace
+
+    def to(self, device=None):
+        self.device = device
+        super().to(device)
 
 class L2(FakeNet):
 
@@ -153,8 +157,7 @@ class L2(FakeNet):
             value = util.l2(util.tensor2np(util.tensor2tensorlab(in0.data,to_norm=False)), 
                 util.tensor2np(util.tensor2tensorlab(in1.data,to_norm=False)), range=100.).astype('float')
             ret_var = Variable( torch.Tensor((value,) ) )
-            if(self.use_gpu):
-                ret_var = ret_var.cuda()
+            ret_var = ret_var.to(self.device)
             return ret_var
 
 class DSSIM(FakeNet):
@@ -168,8 +171,7 @@ class DSSIM(FakeNet):
             value = util.dssim(util.tensor2np(util.tensor2tensorlab(in0.data,to_norm=False)), 
                 util.tensor2np(util.tensor2tensorlab(in1.data,to_norm=False)), range=100.).astype('float')
         ret_var = Variable( torch.Tensor((value,) ) )
-        if(self.use_gpu):
-            ret_var = ret_var.cuda()
+        ret_var = ret_var.to(self.device)
         return ret_var
 
 def print_network(net):
