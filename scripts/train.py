@@ -61,16 +61,16 @@ def train(args):
     nz = 256
     nlr = 0.0002
     nbeta1 = 0.5
-    use_cuda = False
-    multi_gpu = False
     dataloader_workers = 8
     current_iteration = 0
     save_interval = args.save_interval
     saved_model_folder, saved_image_folder = get_dir(args)
     
     device = torch.device("cpu")
-    if use_cuda:
-        device = torch.device("cuda:0")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
 
     transform_list = [
             transforms.Resize((int(im_size),int(im_size))),
@@ -108,11 +108,7 @@ def train(args):
 
     avg_param_G = copy_G_params(netG)
 
-    fixed_noise = torch.FloatTensor(8, nz).normal_(0, 1).to(device)
-
-    if multi_gpu:
-        netG = nn.DataParallel(netG.cuda())
-        netD = nn.DataParallel(netD.cuda())
+    fixed_noise = netG.sample_latent(8).to(device)
 
     optimizerG = optim.Adam(netG.parameters(), lr=nlr, betas=(nbeta1, 0.999))
     optimizerD = optim.Adam(netD.parameters(), lr=nlr, betas=(nbeta1, 0.999))
@@ -131,7 +127,7 @@ def train(args):
         real_image = next(dataloader)
         real_image = real_image.to(device)
         current_batch_size = real_image.size(0)
-        noise = torch.Tensor(current_batch_size, nz).normal_(0, 1).to(device)
+        noise = netG.sample_latent(current_batch_size).to(device)
 
         fake_images = netG(noise)
 
@@ -163,7 +159,7 @@ def train(args):
             backup_para = copy_G_params(netG)
             load_params(netG, avg_param_G)
             with torch.no_grad():
-                vutils.save_image(netG(fixed_noise)[0].add(1).mul(0.5), saved_image_folder+'/%d.jpg'%iteration, nrow=4)
+                vutils.save_image(netG.generate(fixed_noise), saved_image_folder+'/%d.jpg'%iteration, nrow=4)
                 vutils.save_image( torch.cat([
                         F.interpolate(real_image, 128), 
                         rec_img_all, rec_img_small,

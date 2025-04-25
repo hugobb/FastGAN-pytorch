@@ -181,6 +181,33 @@ class FastGAN(nn.Module):
         im_1024 = torch.tanh(self.to_big(feat_1024))
 
         return [im_1024, im_128]
+    
+    def sample_latent(self, num_samples):
+        """Generate random latent vectors for the FastGAN model."""
+        # Ensure num_samples is a positive integer
+        if not isinstance(num_samples, int) or num_samples <= 0:
+            raise ValueError("num_samples must be a positive integer")
+
+        # Generate random latent vectors
+        latents = torch.Tensor(num_samples, self.nz).normal_(0, 1)
+
+        return latents
+
+    def generate(self, input):
+        """Generate images from the FastGAN model."""
+        # Ensure the input is a tensor
+        if not isinstance(input, torch.Tensor):
+            raise TypeError("Input must be a torch.Tensor")
+
+        # Check if the input size matches the expected size
+        if input.size(1) != self.nz:
+            raise ValueError(f"Input tensor must have {self.nz} channels, but got {input.size(1)}")
+
+        # Forward pass through the model
+        with torch.no_grad():
+            generated_image = self.forward(input)[0]
+
+        return generated_image.add(1).mul(0.5).clip(0, 1)
 
     def save(self, path: Path | str):
         """Save the FastGAN model to a given path."""
@@ -203,8 +230,12 @@ class FastGAN(nn.Module):
             }, path)
 
     @staticmethod
-    def load(path: Path):
+    def load(path: Path | str):
         """Load the FastGAN model from a given path."""
+        # Convert path to Path object if it's a string
+        if isinstance(path, str):
+            path = Path(path)
+
         # Check if the path exists
         if not path.exists():
             raise FileNotFoundError(f"The path {path} does not exist.")
@@ -213,7 +244,6 @@ class FastGAN(nn.Module):
         model_ckpt = torch.load(path, map_location='cpu')
         model = FastGAN(model_ckpt['ngf'], model_ckpt['nz'], model_ckpt['nc'], model_ckpt['im_size'])
         model.load_state_dict(model_ckpt['model_state_dict'])
-        model.eval()
 
         return model
 
