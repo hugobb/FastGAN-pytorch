@@ -12,14 +12,12 @@ from torchvision import utils as vutils
 
 from tqdm import tqdm
 
-from fastgan.models import weights_init, Discriminator, FastGAN
+from fastgan.models import DiscriminatorEnum, load_discriminator, FastGAN, weights_init, DiscriminatorConfig
 from fastgan.operation import copy_G_params, load_params
 from fastgan.operation import ImageFolder, InfiniteSamplerWrapper
 from fastgan.diffaug import DiffAugment
 policy = 'color,translation'
 from fastgan import lpips
-
-
 
 def crop_image_by_part(image, part):
     hw = image.shape[2]//2
@@ -49,6 +47,7 @@ class Trainer(Serializable):
     current_iteration: int = 0
     save_interval: int = 100
     save_dir: Path = Path("./train_results")
+    discriminator_mode:  DiscriminatorEnum = DiscriminatorEnum.DEFAULT
 
     def train_d(self, data, label="real"):
         """Train function of discriminator"""
@@ -113,38 +112,57 @@ class Trainer(Serializable):
                                 pin_memory=True)
         dataloader = CudaDataLoader(loader, 'cuda')
         '''
-        
-        
-        #from model_s import Generator, Discriminator
-        netG = FastGAN(ngf=self.ngf, nz=self.nz, im_size=self.im_size)
-        netG.apply(weights_init)
 
-        self.netD = Discriminator(ndf=self.ndf, im_size=self.im_size)
-        self.netD.apply(weights_init)
-
-        self.percept = lpips.PerceptualLoss(model='net-lin', net='vgg')
-
+        # Initialize generator
+        netG = FastGAN(ngf=self.ngf, nz=self.nz, im_size=self.im_size).apply(weights_init)
         netG.to(device)
-        self.netD.to(device)
-        self.percept.to(device)
 
-        avg_param_G = copy_G_params(netG)
+        # Set up perceptual loss
+        self.percept = lpips.PerceptualLoss(model='net-lin', net='vgg').to(device)
 
+        # Optimizer settings
+        optimizerG = optim.Adam(netG.parameters(), lr=self.nlr, betas=(self.nbeta1, 0.999))
+
+        # Sample fixed latent vector
         fixed_noise = netG.sample_latent(8).to(device)
 
-        
+        # Initialize or load discriminator
+        if self.checkpoint is None:
+            self.netD = load_discriminator(
+                DiscriminatorConfig(ndf=self.ndf, im_size=self.im_size),
+                mode=self.discriminator_mode
+            ).apply(weights_init)
+            
+            self.netD.to(device)
+            optimizerD = optim.Adam(self.netD.parameters(), lr=self.nlr, betas=(self.nbeta1, 0.999))
+            
+            avg_param_G = copy_G_params(netG)
 
-        optimizerG = optim.Adam(netG.parameters(), lr=self.nlr, betas=(self.nbeta1, 0.999))
-        optimizerD = optim.Adam(self.netD.parameters(), lr=self.nlr, betas=(self.nbeta1, 0.999))
-        
-        if self.checkpoint is not None:
-            ckpt = torch.load(self.checkpoint)
+        else:
+            # Load checkpoint
+            ckpt = torch.load(self.checkpoint, map_location="cpu")
+            
             netG.load_state_dict(ckpt['g'])
+            self.netD = load_discriminator(
+                DiscriminatorConfig(ndf=self.ndf, im_size=self.im_size),
+                mode=DiscriminatorEnum.FFHQ
+            )
             self.netD.load_state_dict(ckpt['d'])
-            avg_param_G = ckpt['g_ema']
+            
+            # Move models to device
+            netG.to(device)
+            self.netD.to(device)
+
+            # Load optimizers
             optimizerG.load_state_dict(ckpt['opt_g'])
+            optimizerD = optim.Adam(self.netD.parameters(), lr=self.nlr, betas=(self.nbeta1, 0.999))
             optimizerD.load_state_dict(ckpt['opt_d'])
+
+            # Move EMA params to device
+            avg_param_G = [p.to(device) for p in ckpt['g_ema']]
+            
             del ckpt
+
 
         for iteration in tqdm(range(self.current_iteration, self.total_iterations+1)):
             real_image = next(dataloader)

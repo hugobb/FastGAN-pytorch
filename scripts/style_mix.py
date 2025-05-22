@@ -9,7 +9,7 @@ from torchvision import utils as vutils
 import argparse
 from tqdm import tqdm
 
-from fastgan.models import weights_init, Discriminator, FastGAN
+from fastgan.models.default import weights_init, Discriminator, FastGAN
 from fastgan.operation import copy_G_params, load_params, get_dir
 from fastgan.operation import ImageFolder, InfiniteSamplerWrapper
 from fastgan.diffaug import DiffAugment

@@ -5,3 +5,4 @@ dataset/
 train_results/
 *.pyc
 .DS_Store
+good_ffhq_full_512
