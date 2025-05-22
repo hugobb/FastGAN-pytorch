@@ -16,6 +16,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 license = "MIT"
+dependencies = [
+  "simple_parsing",
+  "PyYAML",
+  "torch",
+  "torchvision",
+]
 
 [project.urls]
 Homepage = "https://github.com/hugobb/FastGAN-pytorch"
