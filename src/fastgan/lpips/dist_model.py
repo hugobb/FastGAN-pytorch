@@ -84,6 +84,7 @@ class DistModel(BaseModel):
             print('---------- Networks initialized -------------')
             networks.print_network(self.net)
             print('-----------------------------------------------')
+        
 
     def forward(self, in0, in1, retPerLayer=False):
         ''' Function computes the distance between image patches in0 and in1
